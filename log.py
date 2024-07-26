@@ -4,7 +4,7 @@ from datetime import datetime
 import time
 import os
 
-def generate_log_and_write_csv(log_entries, csv_file_path):
+def generate_log_and_write_csv(log_entries, csv_file_path, log_file_paths):
     # Configuration du logger
     logger = logging.getLogger('my_logger')
     logger.setLevel(logging.DEBUG)
@@ -13,8 +13,8 @@ def generate_log_and_write_csv(log_entries, csv_file_path):
     formatter = logging.Formatter('%(asctime)s, %(levelname)s,%(message)s')
     
     # Handler pour écrire les logs dans un fichier temporaire
-    log_file_path = 'logs/temporary_logfile.log'
-    file_handler = logging.FileHandler(log_file_path)
+    temp_log_file_path = 'logs/temporary_logfile.log'
+    file_handler = logging.FileHandler(temp_log_file_path)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
@@ -31,11 +31,19 @@ def generate_log_and_write_csv(log_entries, csv_file_path):
     
     # Lecture des logs et écriture dans un fichier CSV
     # Lire le fichier de log
-    log_df = pd.read_csv(log_file_path, names=['date', 'levelname', 'project_name', 'status', 'duration'], sep=',')
+    for log_file in log_file_paths:
+        # Lire le fichier de log
+        log_df = pd.read_csv(log_file, names=['date', 'levelname', 'project_name', 'status', 'duration'], sep=',')
+        
+        # Écrire dans un fichier CSV en mode append
+        log_df['date'] = datetime.now().strftime("%Y-%m-%d")
+        # Écrire dans un fichier CSV
+        log_df.to_csv(csv_file_path, mode='a', header=False, index=False)
     
-    log_df['date'] = datetime.now().strftime("%Y-%m-%d")
-    # Écrire dans un fichier CSV
-    log_df.to_csv(csv_file_path, mode='a', header=False, index=False)
+    # Nettoyer le fichier de log temporaire
+    if os.path.exists(temp_log_file_path):
+        os.remove(temp_log_file_path)
+        
     
 
     
