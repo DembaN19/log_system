@@ -1,17 +1,23 @@
 import logging
 import os
 import datetime
+import re
 from csv_logger import CsvLogger
+import pandas as pd
+from src.utils import config, insert_data_into_db, drop_data, server, database, table_name, username, password
+from decorators.timing import get_time
 
 # Configuration du logger avec un chemin fixe pour le fichier CSV
 logger = CsvLogger(
     filename='/home/support-info/TM/09-monitoring-global/logs.csv',
     delimiter=',',
     level=logging.INFO,
-    fmt='%(asctime)s,%(levelname)s,%(message)s,%(project_name)s,%(status)s,%(duration)s',
+    fmt='%(date)s,%(levelname)s,%(message)s,%(project_name)s,%(status)s,%(duration)s,%(load_file)s',
     datefmt='%Y/%m/%d %H:%M:%S',
-    header=['date', 'levelname', 'message', 'project_name', 'status', 'duration']
+    header=['date', 'levelname', 'message', 'project_name', 'status', 'duration', 'load_file']
 )
+schema_table = config.db_dwh.schema_table
+
 
 # Capture initial timestamp
 start_time = datetime.datetime.now()
@@ -26,19 +32,27 @@ def get_status(level):
         return 'warning'
     return 'unknown'
 
+# Clean file
+df = pd.read_csv("logs.csv")
+df_vide = pd.DataFrame(columns=df.columns)
+df_vide.to_csv("/home/support-info/TM/09-monitoring-global/logs.csv", index=False)
 # Fonction pour ajouter des logs en fonction du message reçu
-def log_message(logger, message, level, start_time, project_name):
+def log_message(logger, timestamp, message, level, start_time, project_name):
     current_time = datetime.datetime.now()
     duration_seconds = (current_time - start_time).total_seconds()
-
+    date_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     status = get_status(level)
 
     log_entry = {
+        'date': timestamp,
         'project_name': project_name,
         'status': status,
-        'duration': f"{duration_seconds:.4f}s"  # Formater la durée avec 4 décimales
+        'duration': f"{duration_seconds:.4f}s",  # Formater la durée avec 4 décimales
+        'load_file': date_time
     }
-
+    message = message.replace(',', '')
+    if len(message) > 42:
+        message = message[:42]
     # Log message avec des informations supplémentaires
     logger.log(level=getattr(logging, level.upper()), msg=message, extra=log_entry)
 
@@ -69,19 +83,32 @@ def main():
                 full_log_file_path = os.path.join(logs_directory, log_file)
                 log_file_paths.append(full_log_file_path)
 
+    # Définir un motif regex pour extraire le timestamp, le niveau et le message
+    log_pattern = re.compile(r"(\d{4}[-/]\d{2}[-/]\d{2} \d{2}:\d{2}:\d{2})\s*[-,]?\s*(INFO|ERROR|WARNING)\s*[-,]?\s*(.*)", re.DOTALL)
+
+
     # Traiter chaque fichier de log
     for log_file_path in log_file_paths:
         project_name = extract_project_name(log_file_path)
         
         with open(log_file_path, 'r') as log_file:
             for line in log_file:
-                # Découper la ligne du log
-                parts = line.strip().split(' - ')
-                if len(parts) >= 3:
-                    timestamp, level, message = parts[0], parts[1], ' - '.join(parts[2:])
-                    log_message(logger, message, level, start_time, project_name)
+                try:
+                    # Appliquer le motif regex à la ligne
+                    match = re.search(log_pattern, line.strip())
+                    if match:
+                        timestamp, level, message = match.groups()
+                        if level in ['INFO', 'ERROR', 'WARNING']:
+                            log_message(logger, timestamp, message, level, start_time, project_name)
+                    
+                except Exception as e:
+                    print(f"Error processing line in {log_file_path}: {line}\n{e}")
 
     print("Logs have been written to logs.csv")
+    drop_data(server, database, username, password, f'{schema_table}.{table_name}')
+    df = pd.read_csv("logs.csv")
+    insert_data_into_db(df, f'{schema_table}.{table_name}', server, database, username, password)
+    print('job done')
 
 if __name__ == "__main__":
     main()

@@ -15,6 +15,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
+from decorators.timing import get_time
 
 # Get config file 
 config_file = 'src/config.conf'
@@ -63,11 +64,11 @@ def getting_configuration_back():
     column_dtypes = config.dataframes.column_dtypes
     columns_to_convert = config.dataframes.columns_to_convert
     date_columns = config.dataframes.date_columns
-    columns_to_keep = config.dataframes.columns_to_keep
+
     
-    return server, database, username, password, table_name, column_dtypes, columns_to_convert, date_columns, columns_to_keep
+    return server, database, username, password, table_name, column_dtypes, columns_to_convert, date_columns
         
-server, database, username, password, table_name, column_dtypes, columns_to_convert, date_columns, columns_to_keep = getting_configuration_back()
+server, database, username, password, table_name, column_dtypes, columns_to_convert, date_columns = getting_configuration_back()
 
 
 def build_sql_pymssql(server, database, username, password):
@@ -162,8 +163,8 @@ def insert_data_into_db(df: pd.DataFrame, table_name_with_schema: str, server: s
         cur.execute(create_table_query)
         logger.info(f"Create table query: {create_table_query}")
         # Check the length of columns before inserting, it should be 23
-        if len(df.columns) != 26:
-            logger.error(f"The length of the DataFrame should be 24, but we have {len(df.columns)}")
+        if len(df.columns) != 7:
+            logger.error(f"The length of the DataFrame should be 7, but we have {len(df.columns)}")
         else:
             # Insert data
             columns = ','.join(df.columns)
@@ -548,10 +549,7 @@ def move_files_excel_to_archive(source_folder, archive_folder):
     except Exception as e:
         logger.error(f"Error: {e}")
         
-        
-# read adp 
 
-df_adp = pd.read_excel("data/output/ADP SALESPERSONNAME.xlsx")
 
 
 @st.cache_data
@@ -743,3 +741,23 @@ def generate_log_and_write_csv(log_entries, csv_file_path):
     log_df['date'] = datetime.now().strftime("%Y-%m-%d")
     # Écrire dans un fichier CSV
     log_df.to_csv(csv_file_path, mode='a', header=False, index=False)
+    
+@get_time
+def drop_data(server, database, username, password, table_name_with_schema):
+    
+    _, table = table_name_with_schema.split('.')
+    conn, cur = build_sql_pymssql(server, database, username, password)
+    delete_query = f"""
+    DROP TABLE IF EXISTS {table_name_with_schema}
+    """
+    try:
+        cur.execute(delete_query)
+        conn.commit()
+        logger.info("Data are been deleted")
+        
+    except pymssql.Error as e:
+        logger.error(f"An error occurred while droping data into the database: {e}")
+        raise e
+    finally:
+        cur.close()
+        conn.close()
