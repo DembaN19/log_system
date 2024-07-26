@@ -27,13 +27,14 @@ def get_status(level):
     return 'unknown'
 
 # Fonction pour ajouter des logs en fonction du message reçu
-def log_message(logger, message, level, start_time, project_name):
+def log_message(logger, timestamp, message, level, start_time, project_name):
     current_time = datetime.datetime.now()
     duration_seconds = (current_time - start_time).total_seconds()
 
     status = get_status(level)
 
     log_entry = {
+        'date': timestamp,
         'project_name': project_name,
         'status': status,
         'duration': f"{duration_seconds:.4f}s"  # Formater la durée avec 4 décimales
@@ -62,7 +63,7 @@ def main():
         
         # Vérifier si le sous-dossier 'logs' existe
         if os.path.isdir(logs_directory):
-            log_files = [file for file in os.listdir(logs_directory) if file.endswith('.log')]
+            log_files = [file for file in os.listdir(logs_directory) if file.endswith('.log') and 'log_' in file]
             
             # Ajouter les chemins complets des fichiers de log à la liste
             for log_file in log_files:
@@ -77,9 +78,8 @@ def main():
             for line in log_file:
                 # Découper la ligne du log
                 parts = line.strip().split(' - ')
-                if len(parts) >= 3:
-                    timestamp, level, message = parts[0], parts[1], ' - '.join(parts[2:])
-                    log_message(logger, message, level, start_time, project_name)
+                timestamp, level, message = parts[0], parts[1], ' - '.join(parts[2:])
+                log_message(logger, message, level, start_time, project_name)
 
     print("Logs have been written to logs.csv")
 
