@@ -1,81 +1,87 @@
-import os
 import logging
-from time import sleep
+import os
+import datetime
 from csv_logger import CsvLogger
-import pandas as pd
 
-# Get the current directory name as the project name
-project_name = os.path.basename(os.getcwd())
+# Configuration du logger avec un chemin fixe pour le fichier CSV
+logger = CsvLogger(
+    filename='/home/support-info/TM/09-monitoring-global/logs.csv',
+    delimiter=',',
+    level=logging.INFO,
+    fmt='%(asctime)s,%(levelname)s,%(message)s,%(project_name)s,%(status)s,%(duration)s',
+    datefmt='%Y/%m/%d %H:%M:%S',
+    header=['date', 'levelname', 'message', 'project_name', 'status', 'duration']
+)
 
-filename = 'log.csv'
-delimiter = ';'
-level = logging.INFO
-custom_additional_levels = ['logs_a', 'logs_b', 'logs_c']
-custom_additional_level_nums = [logging.INFO + 1, logging.INFO + 2, logging.INFO + 3]
-fmt = f'%(asctime)s{delimiter}%(levelname)s{delimiter}%(message)s'
-datefmt = '%Y/%m/%d %H:%M:%S'
-max_size = 1024  # 1 kilobyte
-max_files = 4  # 4 rotating files
-header = ['date', 'level', 'value_1', 'value_2', 'project_name', 'status']
+# Capture initial timestamp
+start_time = datetime.datetime.now()
 
-class CustomCsvLogger(CsvLogger):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.custom_level_mapping = dict(zip(custom_additional_levels, custom_additional_level_nums))
-        logging.addLevelName(self.custom_level_mapping['logs_a'], 'LOGS_A')
-        logging.addLevelName(self.custom_level_mapping['logs_b'], 'LOGS_B')
-        logging.addLevelName(self.custom_level_mapping['logs_c'], 'LOGS_C')
+# Fonction pour obtenir le statut en fonction du niveau de log
+def get_status(level):
+    if level == 'INFO':
+        return 'success'
+    elif level == 'ERROR':
+        return 'failed'
+    elif level == 'WARNING':
+        return 'warning'
+    return 'unknown'
 
-    def logs_a(self, message):
-        self._log_custom('logs_a', message)
+# Fonction pour ajouter des logs en fonction du message reçu
+def log_message(logger, message, level, start_time, project_name):
+    current_time = datetime.datetime.now()
+    duration_seconds = (current_time - start_time).total_seconds()
 
-    def logs_b(self, message):
-        self._log_custom('logs_b', message)
+    status = get_status(level)
 
-    def logs_c(self, message):
-        self._log_custom('logs_c', message)
+    log_entry = {
+        'project_name': project_name,
+        'status': status,
+        'duration': f"{duration_seconds:.4f}s"  # Formater la durée avec 4 décimales
+    }
 
-    def _log_custom(self, level_name, message):
-        # Get the level number for the custom level name
-        level_num = self.custom_level_mapping[level_name]
-        # Determine the status based on log level
-        status = 'failed' if level_num >= logging.ERROR else 'success'
+    # Log message avec des informations supplémentaires
+    logger.log(level=getattr(logging, level.upper()), msg=message, extra=log_entry)
 
-        # Format the message
-        if isinstance(message, list):
-            message = delimiter.join(map(str, message))
+# Fonction pour extraire le project_name à partir du chemin du fichier de log
+def extract_project_name(log_file_path):
+    # Extrait le nom du répertoire parent juste après 'TM/'
+    path_parts = log_file_path.split('/')
+    project_index = path_parts.index('TM') + 1
+    return path_parts[project_index]
 
-        # Log the message with project name and status as extra
-        extra = {'project_name': project_name, 'status': status}
-        self._log(level_num, message, extra=extra)
+def main():
+    log_directory = '/home/support-info/TM/'
+    all_items = os.listdir(log_directory)
+    directories = [item for item in all_items if os.path.isdir(os.path.join(log_directory, item))]
 
-# Create logger with custom csv rotating handler
-csvlogger = CustomCsvLogger(filename=filename,
-                            delimiter=delimiter,
-                            level=level,
-                            add_level_names=custom_additional_levels,
-                            add_level_nums=custom_additional_level_nums,
-                            fmt=fmt,
-                            datefmt=datefmt,
-                            max_size=max_size,
-                            max_files=max_files,
-                            header=header)
+    log_file_paths = []
 
-# Log some records
-for i in range(10):
-    csvlogger.logs_a([i, i * 2])
-    sleep(0.1)
+    # Explorer chaque dossier pour trouver les fichiers de log
+    for directory in directories:
+        logs_directory = os.path.join(log_directory, directory, 'logs')
+        
+        # Vérifier si le sous-dossier 'logs' existe
+        if os.path.isdir(logs_directory):
+            log_files = [file for file in os.listdir(logs_directory) if file.endswith('.log')]
+            
+            # Ajouter les chemins complets des fichiers de log à la liste
+            for log_file in log_files:
+                full_log_file_path = os.path.join(logs_directory, log_file)
+                log_file_paths.append(full_log_file_path)
 
-# You can log list or string
-csvlogger.logs_b([1000.1, 2000.2])
-csvlogger.critical('3000,4000')
+    # Traiter chaque fichier de log
+    for log_file_path in log_file_paths:
+        project_name = extract_project_name(log_file_path)
+        
+        with open(log_file_path, 'r') as log_file:
+            for line in log_file:
+                # Découper la ligne du log
+                parts = line.strip().split(' - ')
+                if len(parts) >= 3:
+                    timestamp, level, message = parts[0], parts[1], ' - '.join(parts[2:])
+                    log_message(logger, message, level, start_time, project_name)
 
-# Log some more records to trigger rollover
-for i in range(50):
-    csvlogger.logs_c([i * 2, float(i**2)])
-    sleep(0.1)
+    print("Logs have been written to logs.csv")
 
-# Read and print all of the logs from file after logging
-all_logs = csvlogger.get_logs(evaluate=False)
-for log in all_logs:
-    print(log)
+if __name__ == "__main__":
+    main()

@@ -1,61 +1,81 @@
 import logging
-import pandas as pd
-from datetime import datetime
-import time
 import os
+import datetime
+from csv_logger import CsvLogger
 
-def generate_log_and_write_csv(log_entries, csv_file_path, log_file_paths):
-    # Configuration du logger
-    logger = logging.getLogger('my_logger')
-    logger.setLevel(logging.DEBUG)
-    
-    # Formatter pour le logger
-    formatter = logging.Formatter('%(asctime)s, %(levelname)s,%(message)s')
-    
-    # Handler pour écrire les logs dans un fichier temporaire
-    temp_log_file_path = 'logs/temporary_logfile.log'
-    file_handler = logging.FileHandler(temp_log_file_path)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    
-    # Fonction pour logguer les informations
-    def log_project_info(project_name, status, duration):
-        
-        message = f'{project_name},{status},{duration}'
-        logger.info(message)
-    
-    # Enregistrer les logs des projets
-    for entry in log_entries:
-        log_project_info(entry['project_name'], entry['status'], entry['duration'])
-        time.sleep(1)  # Simule une attente entre les logs
-    
-    # Lecture des logs et écriture dans un fichier CSV
-    # Lire le fichier de log
-    for log_file in log_file_paths:
-        # Lire le fichier de log
-        log_df = pd.read_csv(log_file, names=['date', 'levelname', 'project_name', 'status', 'duration'], sep=',')
-        
-        # Écrire dans un fichier CSV en mode append
-        log_df['date'] = datetime.now().strftime("%Y-%m-%d")
-        # Écrire dans un fichier CSV
-        log_df.to_csv(csv_file_path, mode='a', header=False, index=False)
-    
-    # Nettoyer le fichier de log temporaire
-    if os.path.exists(temp_log_file_path):
-        os.remove(temp_log_file_path)
-        
-    
+# Définir project_name une fois
+project_name = os.path.basename(os.getcwd())
 
-    
+# Configuration du logger
+logger = CsvLogger(
+    filename='/home/support-info/TM/09-monitoring-global/logs.csv',
+    delimiter=',',
+    level=logging.INFO,
+    fmt='%(asctime)s,%(levelname)s,%(message)s,%(project_name)s,%(status)s,%(duration)s',
+    datefmt='%Y/%m/%d %H:%M:%S',
+    header=['date', 'levelname', 'message', 'project_name', 'status', 'duration']
+)
 
-log_entries = [
-        {
-            "project_name": os.path.basename(os.getcwd()),
-            "status": "completed",
-            "duration": '2024-07-24 14:41:25'
-        }
-    ]
+# Capture initial timestamp
+start_time = datetime.datetime.now()
+
+# Fonction pour obtenir le statut en fonction du niveau de log
+def get_status(level):
+    if level == 'INFO':
+        return 'success'
+    elif level == 'ERROR':
+        return 'failed'
+    elif level == 'WARNING':
+        return 'warning'
+    return 'unknown'
+
+# Fonction pour ajouter des logs en fonction du message reçu
+def log_message(logger, message, level):
+    current_time = datetime.datetime.now()
+    duration_seconds = (current_time - start_time).total_seconds()
+
+    status = get_status(level)
+
+    log_entry = {
+        'project_name': project_name,
+        'status': status,
+        'duration': f"{duration_seconds:.4f}s"  # Formater la durée avec 4 décimales
+
+    }
+
+    logger.log(level=getattr(logging, level.upper()), msg=message, extra=log_entry)
+
+# Simuler l'ajout des logs
+logs = [
+    "2024-07-25 11:49:26 - INFO - Start timestamp: 2024-07-25 11:49:26.376470",
+    "2024-07-25 11:49:33 - INFO - Conversion has been started!",
+    "2024-07-25 11:49:33 - INFO - Conversion process completed.",
+    "2024-07-25 11:49:37 - ERROR - No valid parquet files found in the directory.",
+    "2024-07-25 11:49:55 - INFO - Traitement finished timestamp: 2024-07-25 11:49:52.188788",
+    "2024-07-25 11:50:02 - INFO - Duration job: 0h:0m:29s"
+]
+
+log_directory = '/home/support-info/TM/'
+all_items = os.listdir(log_directory)
+directories = [item for item in all_items if os.path.isdir(os.path.join(log_directory, item))]
+
+log_file_paths = []
+
+# Explorer chaque dossier pour trouver les fichiers de log
+for directory in directories:
+    logs_directory = os.path.join(log_directory, directory, 'logs')
     
-# Appeler la fonction pour générer et écrire les logs
-csv_file_path = '/home/support-info/TM/09-monitoring-global/log.csv'
-generate_log_and_write_csv(log_entries, csv_file_path)
+    # Vérifier si le sous-dossier 'logs' existe
+    if os.path.isdir(logs_directory):
+        log_files = [file for file in os.listdir(logs_directory) if file.endswith('.log')]
+        
+        # Ajouter les chemins complets des fichiers de log à la liste
+        for log_file in log_files:
+            full_log_file_path = os.path.join(logs_directory, log_file)
+            log_file_paths.append(full_log_file_path)
+            
+for log in log_file_paths:
+    parts = log.split(' - ')
+    log_message(logger, parts[2], parts[1])
+
+print("Logs have been written to logs.csv")
