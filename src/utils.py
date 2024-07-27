@@ -139,6 +139,7 @@ def insert_data_into_db(df: pd.DataFrame, table_name_with_schema: str, server: s
         cur.execute(create_schema_query)
         logger.info(f"Create schema query: {create_schema_query}")
         
+        df = df.astype(column_dtypes)
         # Create the table query
         create_table_query = f"""
         IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{schema}' AND TABLE_NAME = '{table}')
