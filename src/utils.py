@@ -30,7 +30,8 @@ if not os.path.exists('logs'):
 # Set up the logger
 # Set up the logger
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_filename = f'logs/log_{current_time}_budget_PWE.log'
+project_name = os.path.basename(os.getcwd())
+log_filename = f'logs/log_{current_time}_{project_name}.log'
 logging.basicConfig(
     filename=log_filename,
     level=logging.INFO,
@@ -138,7 +139,7 @@ def insert_data_into_db(df: pd.DataFrame, table_name_with_schema: str, server: s
         """
         cur.execute(create_schema_query)
         logger.info(f"Create schema query: {create_schema_query}")
-        
+        df[columns_to_convert] = df[columns_to_convert].astype(float)
         df = df.astype(column_dtypes)
         # Create the table query
         create_table_query = f"""

@@ -47,7 +47,7 @@ def log_message(logger, timestamp, message, level, start_time, project_name):
         'date': timestamp,
         'project_name': project_name,
         'status': status,
-        'duration': f"{duration_seconds:.4f}s",  # Formater la durée avec 4 décimales
+        'duration': f"{duration_seconds:.4f}",  # Formater la durée avec 4 décimales
         'load_file': date_time
     }
     message = message.replace(',', '')
@@ -107,8 +107,25 @@ def main():
     print("Logs have been written to logs.csv")
     drop_data(server, database, username, password, f'{schema_table}.{table_name}')
     df = pd.read_csv("logs.csv")
+    df['duration'] = df['duration'].astype(float)
+    df['date'] = pd.to_datetime(df['date'])
+    df['load_file'] = pd.to_datetime(df['load_file'])
+
+    # Extraire la date seulement
+    df['date_only'] = df['date'].dt.date
+
+    # Trier par 'project_name', 'date_only', et 'date'
+    df = df.sort_values(by=['project_name', 'date_only', 'date']).reset_index(drop=True)
+
+    # Calculer la différence en secondes entre les lignes dans chaque groupe
+    df['duration'] = df.groupby(['project_name', 'date_only'])['date'].diff().dt.total_seconds()
+
+    # Formater la colonne 'duration' pour avoir 4 chiffres après la virgule
+    df['duration'] = df['duration'].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else 0)
+    df = df.drop(columns='date_only')
     insert_data_into_db(df, f'{schema_table}.{table_name}', server, database, username, password)
     print('job done')
+    
 
 if __name__ == "__main__":
     main()

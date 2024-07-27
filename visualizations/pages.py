@@ -99,6 +99,7 @@ def show_analytics():
     st.title("Logging System Dashboard")
     st.write("Welcome to the Logging System Dashboard. Here, you can find insights into the logging system's performance across different entities.")
     df_base['date'] = pd.to_datetime(df_base['date'])
+    df_base['duration'] = df_base['duration'].astype(float)
     
     # Filters
     project_names = st.multiselect("Filter by Project Name", options=df_base["project_name"].unique(), default=df_base["project_name"].unique())
@@ -122,8 +123,10 @@ def show_analytics():
     st.metric(label="Percentage of Success Logs", value=f"{success_percentage:.2f}%")
     
     # Status by Project and Date
-    st.subheader("Status by Project and Date")
-    fig0 = generate_simple_bar_chart(filtered_df, 'project_name', 'status', 'Status by Project', 'bar')
+    st.subheader("Status by Project")
+    fig0 =  generate_bar_chart_count(filtered_df, 'project_name', 'status', 'message', 
+                               'Proportion of Success and Failure by Project', 
+                               'bar', head=None)
     st.plotly_chart(fig0)
     
     
@@ -132,17 +135,14 @@ def show_analytics():
     fig1 = generate_simple_bar_chart(filtered_df, 'project_name', 'duration', 'Duration by Project', 'bar')
     st.plotly_chart(fig1)
     
-    
-    st.subheader("Status by Project")
-    fig2 = generate_bar_chart(filtered_df, 'project_name', 'status', 'duration', 'Status by Project', 'bar')
-    st.plotly_chart(fig2)
-    
    
     st.subheader("Log Level Distribution")
-    fig3 = generate_pie_chart(filtered_df, 'levelname', 'duration', 'Log Level Distribution', px.colors.sequential.RdBu)
+    colors = ['royalblue', 'red']
+    fig3 = generate_pie_chart(filtered_df, 'levelname', 'duration', 'Log Level Distribution', colors)
     st.plotly_chart(fig3)
     
-   
+    with st.expander("Data Overview"):
+        st.dataframe(filtered_df)
    
    
     
