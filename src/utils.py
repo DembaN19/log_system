@@ -878,6 +878,7 @@ def generate_pdf_report_from_df(df, output_path):
 
 def generate_pdf_report_from_df_(df, output_path):
     # Create a pivot table from the DataFrame
+    df = df.sort_values(by='date', ascending=True)
     pivot_table = df.pivot_table(
         index=['project_name', 'status', 'message'],
         values='duration',
@@ -889,27 +890,32 @@ def generate_pdf_report_from_df_(df, output_path):
     # Set the title with the current date
     title = f"Project Status Report - {current_date}"
 
-    # Create a plot of the pivot table
-    fig, ax = plt.subplots(figsize=(12, 8))  # Increased height for title
-    fig.suptitle(title, fontsize=16)  # Add title to the figure
-    ax.axis('tight')
-    ax.axis('off')
-    
-    # Create the table
-    table = ax.table(cellText=pivot_table.values, colLabels=pivot_table.columns, cellLoc='center', loc='center')
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1.2, 1.2)
-    
-    # Adjust column widths
-    column_widths = [1, 1, 3, 1]  # 'message' column width is 3 times others
-    for i, width in enumerate(column_widths):
-        table.auto_set_column_width([i])
-        for j in range(len(pivot_table) + 1):  # +1 for header row
-            table[(j, i)].set_width(width * 0.2)  # Adjust scale factor as needed
+    # Define the number of rows per page
+    rows_per_page = 20  # Adjust this based on the size of your data and page format
+
+    # Split the pivot table into chunks
+    chunks = [pivot_table.iloc[i:i + rows_per_page] for i in range(0, len(pivot_table), rows_per_page)]
 
     # Save the plot to a PDF
     with PdfPages(output_path) as pdf:
-        pdf.savefig(fig, bbox_inches='tight')
-    
-    plt.close(fig)
+        for chunk in chunks:
+            fig, ax = plt.subplots(figsize=(12, 8))  # Increased height for title
+            fig.suptitle(title, fontsize=16)  # Add title to the figure
+            ax.axis('tight')
+            ax.axis('off')
+            
+            # Create the table for the current chunk
+            table = ax.table(cellText=chunk.values, colLabels=chunk.columns, cellLoc='center', loc='center')
+            table.auto_set_font_size(False)
+            table.set_fontsize(10)
+            table.scale(1.2, 1.2)
+            
+            # Adjust column widths
+            column_widths = [1, 1, 3, 1]  # 'message' column width is 3 times others
+            for i, width in enumerate(column_widths):
+                table.auto_set_column_width([i])
+                for j in range(len(chunk) + 1):  # +1 for header row
+                    table[(j, i)].set_width(width * 0.2)  # Adjust scale factor as needed
+            
+            pdf.savefig(fig, bbox_inches='tight')
+            plt.close(fig)
