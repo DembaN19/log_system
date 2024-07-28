@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import tempfile
 from fpdf import FPDF
 from matplotlib.backends.backend_pdf import PdfPages
+from io import BytesIO
 
 
 # Get config file 
@@ -792,88 +793,63 @@ def drop_data(server, database, username, password, table_name_with_schema):
         conn.close()
         
 def generate_pdf_report(df):
-    pivot_table = df.pivot_table(
-        index=['project_name', 'status', 'date'],
-        values='duration',
-        aggfunc='sum'
-    ).reset_index()
-
-    # Streamlit button for generating PDF report
-    if st.button("Generate PDF Report"):
-        # Create a plot of the pivot table
-        fig, ax = plt.subplots()
-        ax.axis('tight')
-        ax.axis('off')
-        ax.table(cellText=pivot_table.values, colLabels=pivot_table.columns, cellLoc='center', loc='center')
-
-        # Save the plot as a PNG file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmpfile:
-            plt.savefig(tmpfile.name, format='png')
-            plt.close(fig)
-            image_path = tmpfile.name
-
-        # Generate PDF report
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=14)
-        pdf.cell(200, 30, txt="Project Status Report", ln=True, align='C')
-        pdf.ln(20)
-
-        # Add the pivot table image to the PDF
-        pdf.image(image_path, x=20, y=40, w=180)  # Adjust the position and size as needed
-        pdf_output = pdf.output(dest='S').encode('latin1')
-
-        st.download_button(
-            label="Download PDF Report",
-            data=pdf_output,
-            file_name='project_status_report.pdf',
-            mime='application/pdf',
-        )
-        
-
-
-def generate_pdf_report_from_df(df, output_path):
     # Create a pivot table from the DataFrame
+    df = df.sort_values(by='date', ascending=True)
     pivot_table = df.pivot_table(
         index=['project_name', 'status', 'message'],
         values='duration',
         aggfunc='sum'
     ).reset_index()
 
-    # Create a plot of the pivot table
-    fig, ax = plt.subplots(figsize=(12, 6))
-    ax.axis('tight')
-    ax.axis('off')
-    table = ax.table(cellText=pivot_table.values, colLabels=pivot_table.columns, cellLoc='center', loc='center')
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1.2, 1.2)
+    # Streamlit button for generating PDF report
+    if st.button("Generate PDF Report"):
+        # Get the current date
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        # Set the title with the current date
+        title = f"Project Status Report - {current_date}"
 
-    # Save the plot as a PNG file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmpfile:
-        plt.savefig(tmpfile.name, format='png')
-        plt.close(fig)
-        image_path = tmpfile.name
+        # Define the number of rows per page
+        rows_per_page = 20  # Adjust this based on the size of your data and page format
 
-    # Generate PDF report
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=14)
-    
-    # Get the current date
-    current_date = datetime.now().strftime('%Y-%m-%d')
-    # Set the title with the current date
-    title = f"Project Status Report - {current_date}"
-    
-    # Add the title to the PDF
-    pdf.cell(200, 30, txt=title, ln=True, align='C')
-    pdf.ln(20)
+        # Split the pivot table into chunks
+        chunks = [pivot_table.iloc[i:i + rows_per_page] for i in range(0, len(pivot_table), rows_per_page)]
 
-    # Add the pivot table image to the PDF
-    pdf.image(image_path, x=10, y=40, w=pdf.w - 20)  # Adjust the position and size as needed
+        # Create a BytesIO object to hold the PDF data
+        
+        pdf_output = BytesIO()
 
-    # Save the PDF to the specified output path
-    pdf.output(output_path)
+        # Save the plot to a PDF
+        with PdfPages(pdf_output) as pdf:
+            for chunk in chunks:
+                fig, ax = plt.subplots(figsize=(12, 8))  # Increased height for title
+                fig.suptitle(title, fontsize=16)  # Add title to the figure
+                ax.axis('tight')
+                ax.axis('off')
+                
+                # Create the table for the current chunk
+                table = ax.table(cellText=chunk.values, colLabels=chunk.columns, cellLoc='center', loc='center')
+                table.auto_set_font_size(False)
+                table.set_fontsize(10)
+                table.scale(1.2, 1.2)
+                
+                # Adjust column widths
+                column_widths = [1, 1, 3, 1]  # 'message' column width is 3 times others
+                for i, width in enumerate(column_widths):
+                    table.auto_set_column_width([i])
+                    for j in range(len(chunk) + 1):  # +1 for header row
+                        table[(j, i)].set_width(width * 0.2)  # Adjust scale factor as needed
+                
+                pdf.savefig(fig, bbox_inches='tight')
+                plt.close(fig)
+        
+        pdf_output.seek(0)  # Reset the pointer to the beginning of the BytesIO object
+
+        st.download_button(
+            label="Download PDF Report",
+            data=pdf_output,
+            file_name=f'project_status_report_{current_date}.pdf',
+            mime='application/pdf',
+        )
 
 
 def generate_pdf_report_from_df_(df, output_path):

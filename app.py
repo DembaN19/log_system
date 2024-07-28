@@ -7,9 +7,10 @@ import warnings
 warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy connectable')
 
 
-st.set_page_config(page_title='Sales WEB APP', page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+
 
 def main():
+    
     config = ConfigFactory.parse_file(config_file)
     pages = config.streamlit.pages
     styles = config.streamlit.styles
@@ -57,4 +58,5 @@ def authenticate():
         main()
 
 if __name__ == '__main__':
-    authenticate()
+    st.set_page_config(page_title='Logging System WEB APP', page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+    main()
