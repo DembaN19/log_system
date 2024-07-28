@@ -14,8 +14,14 @@ import streamlit as st
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 import time
 from decorators.timing import get_time
+import matplotlib.pyplot as plt
+import tempfile
+from fpdf import FPDF
+from matplotlib.backends.backend_pdf import PdfPages
+
 
 # Get config file 
 config_file = 'src/config.conf'
@@ -586,7 +592,8 @@ def generate_report(df):
     )
     
 
-def send_email_with_attachment(subject, body, recipient_list):
+# Send Mail
+def send_email_with_attachment(subject, body, attachment_paths, recipient_list):
     # Load the configuration file
     config = ConfigFactory.parse_file('src/config.conf')
 
@@ -604,7 +611,27 @@ def send_email_with_attachment(subject, body, recipient_list):
     # Attach the message body
     msg.attach(MIMEText(body))
 
-   
+    # Convert my log file into txt 
+    def convert_log_to_txt(log_path):
+        txt_path = log_path.replace('.log', '.txt')
+        with open(log_path, 'r') as log_file, open(txt_path, 'w') as txt_file:
+            txt_file.write(log_file.read())
+        return txt_path
+    # Attach the files
+    for attachment_path in attachment_paths:
+        with open(attachment_path, 'rb') as f:
+            if attachment_path.endswith('.log'):
+                attachment_path = convert_log_to_txt(attachment_path)
+                attachment = MIMEApplication(f.read(), _subtype='txt')
+            elif attachment_path.endswith('.xlsx'):
+                attachment = MIMEApplication(f.read(), _subtype='vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            elif attachment_path.endswith('.pdf'):
+                attachment = MIMEApplication(f.read(), _subtype='pdf')
+            else:
+                continue  # Skip unsupported file types
+            
+            attachment.add_header('Content-Disposition', 'attachment', filename=attachment_path.split('/')[-1])
+            msg.attach(attachment)
 
     # Connect to the SMTP server and send the message
     try:
@@ -617,6 +644,7 @@ def send_email_with_attachment(subject, body, recipient_list):
         logger.info("Email sent successfully")
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
+        
     
 @get_time
 def read_sql_file(file_path: str) -> str:
@@ -700,13 +728,12 @@ def get_data(server, database, username, password, sql_file_path) -> pd.DataFram
     
     return result
 
-def generate_report(df):
-    # CSV Report
+def generate_csv_report(df):
     csv = df.to_csv(index=False)
     st.download_button(
         label="Download data as CSV",
         data=csv,
-        file_name='sales_data.csv',
+        file_name='project_status_data.csv',
         mime='text/csv',
     )
 
@@ -763,3 +790,126 @@ def drop_data(server, database, username, password, table_name_with_schema):
     finally:
         cur.close()
         conn.close()
+        
+def generate_pdf_report(df):
+    pivot_table = df.pivot_table(
+        index=['project_name', 'status', 'date'],
+        values='duration',
+        aggfunc='sum'
+    ).reset_index()
+
+    # Streamlit button for generating PDF report
+    if st.button("Generate PDF Report"):
+        # Create a plot of the pivot table
+        fig, ax = plt.subplots()
+        ax.axis('tight')
+        ax.axis('off')
+        ax.table(cellText=pivot_table.values, colLabels=pivot_table.columns, cellLoc='center', loc='center')
+
+        # Save the plot as a PNG file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmpfile:
+            plt.savefig(tmpfile.name, format='png')
+            plt.close(fig)
+            image_path = tmpfile.name
+
+        # Generate PDF report
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=14)
+        pdf.cell(200, 30, txt="Project Status Report", ln=True, align='C')
+        pdf.ln(20)
+
+        # Add the pivot table image to the PDF
+        pdf.image(image_path, x=20, y=40, w=180)  # Adjust the position and size as needed
+        pdf_output = pdf.output(dest='S').encode('latin1')
+
+        st.download_button(
+            label="Download PDF Report",
+            data=pdf_output,
+            file_name='project_status_report.pdf',
+            mime='application/pdf',
+        )
+        
+
+
+def generate_pdf_report_from_df(df, output_path):
+    # Create a pivot table from the DataFrame
+    pivot_table = df.pivot_table(
+        index=['project_name', 'status', 'message'],
+        values='duration',
+        aggfunc='sum'
+    ).reset_index()
+
+    # Create a plot of the pivot table
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.axis('tight')
+    ax.axis('off')
+    table = ax.table(cellText=pivot_table.values, colLabels=pivot_table.columns, cellLoc='center', loc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.2)
+
+    # Save the plot as a PNG file
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmpfile:
+        plt.savefig(tmpfile.name, format='png')
+        plt.close(fig)
+        image_path = tmpfile.name
+
+    # Generate PDF report
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=14)
+    
+    # Get the current date
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    # Set the title with the current date
+    title = f"Project Status Report - {current_date}"
+    
+    # Add the title to the PDF
+    pdf.cell(200, 30, txt=title, ln=True, align='C')
+    pdf.ln(20)
+
+    # Add the pivot table image to the PDF
+    pdf.image(image_path, x=10, y=40, w=pdf.w - 20)  # Adjust the position and size as needed
+
+    # Save the PDF to the specified output path
+    pdf.output(output_path)
+
+
+def generate_pdf_report_from_df_(df, output_path):
+    # Create a pivot table from the DataFrame
+    pivot_table = df.pivot_table(
+        index=['project_name', 'status', 'message'],
+        values='duration',
+        aggfunc='sum'
+    ).reset_index()
+
+    # Get the current date
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    # Set the title with the current date
+    title = f"Project Status Report - {current_date}"
+
+    # Create a plot of the pivot table
+    fig, ax = plt.subplots(figsize=(12, 8))  # Increased height for title
+    fig.suptitle(title, fontsize=16)  # Add title to the figure
+    ax.axis('tight')
+    ax.axis('off')
+    
+    # Create the table
+    table = ax.table(cellText=pivot_table.values, colLabels=pivot_table.columns, cellLoc='center', loc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.2)
+    
+    # Adjust column widths
+    column_widths = [1, 1, 3, 1]  # 'message' column width is 3 times others
+    for i, width in enumerate(column_widths):
+        table.auto_set_column_width([i])
+        for j in range(len(pivot_table) + 1):  # +1 for header row
+            table[(j, i)].set_width(width * 0.2)  # Adjust scale factor as needed
+
+    # Save the plot to a PDF
+    with PdfPages(output_path) as pdf:
+        pdf.savefig(fig, bbox_inches='tight')
+    
+    plt.close(fig)

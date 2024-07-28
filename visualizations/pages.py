@@ -14,7 +14,7 @@ from visualizations.charts import *
 import pandas as pd
 from streamlit_lottie import st_lottie
 import requests
-
+from src.utils import generate_csv_report, generate_pdf_report
 
 config = ConfigFactory.parse_file(config_file)
 server = config.db_dwh.server
@@ -148,68 +148,25 @@ def show_analytics():
     
     
 def show_reports():
-    
-    st.title("Sales Reports")
-    st.write("Generate and download detailed sales reports.")
+    st.title("Project Reports")
+    st.write("Generate and download detailed project reports.")
 
-    st.header("Sales Data Overview")
+    st.header("Data Overview")
     with st.expander("Data Overview"):
         st.dataframe(df_base)
 
-    st.header("Download Reports")
-    generate_report(df_base)
+    st.header("Filter and Download Reports")
+    df_base['date_only'] = df_base['date'].dt.date
+    # Filtre de sélection de date
+    selected_date = st.date_input("Pick a date", pd.to_datetime("today"))
+    filtered_df = df_base[df_base['date_only'] == selected_date]
 
+    st.write(f"Data for {selected_date}")
+    st.dataframe(filtered_df)
 
-
-    # PDF Report
-    # Generate the pivot table
-    pivot_table = df_base.pivot_table(
-        index=['entity', 'ods', 'yeargl'],
-        values='amount',
-        aggfunc='sum'
-    ).reset_index()
-
-    # Calculate the percentage of digital sales regarding the CA
-    pivot_table['Percentage'] = (pivot_table['Sales'] / df_base.groupby(['Entity', 'BusinessLine', 'YearGL'])['CA'].first().values) * 100
-
-    pivot_table['Sales'] = pivot_table['Sales'].round(2)
-    pivot_table['Percentage'] = pivot_table['Percentage'].round(2)
-    # Streamlit button for generating PDF report
-    if st.button("Generate PDF Report"):
-        
-        # Create a plot of the pivot table
-        fig, ax = plt.subplots()
-        ax.axis('tight')
-        ax.axis('off')
-        ax.table(cellText=pivot_table.values, colLabels=pivot_table.columns, cellLoc='center', loc='center')
-
-        # Save the plot as a PNG file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmpfile:
-            plt.savefig(tmpfile.name, format='png')
-            plt.close(fig)
-            image_path = tmpfile.name
-
-        # Generate PDF report
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=14)
-
-        pdf.cell(200, 30, txt="DCX Sales Report", ln=True, align='C')
-        pdf.ln(20)
-
-        # Add the pivot table image to the PDF
-        pdf.image(image_path, x=20, y=40, w=180)  # Adjust the position and size as needed
-
-        pdf_output = pdf.output(dest='S').encode('latin1')
-
-        
-
-        st.download_button(
-            label="Download PDF Report",
-            data=pdf_output,
-            file_name='sales_report.pdf',
-            mime='application/pdf',
-        )
+    generate_csv_report(filtered_df)
+    generate_pdf_report(filtered_df)
+    
     
 def show_contacts():
     st.title("Contact Us")
