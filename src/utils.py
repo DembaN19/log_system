@@ -895,3 +895,127 @@ def generate_pdf_report_from_df_(df, output_path):
             
             pdf.savefig(fig, bbox_inches='tight')
             plt.close(fig)
+            
+# Fonction pour obtenir le statut en fonction du niveau de log
+def get_status(level):
+    if level == 'INFO':
+        return 'success'
+    elif level == 'ERROR':
+        return 'failed'
+    elif level == 'WARNING':
+        return 'warning'
+    elif level == 'WARN':
+        return 'warning'
+    return 'unknown'
+
+
+# Fonction pour ajouter des logs en fonction du message reçu
+def log_message(logger, timestamp, message, level, start_time, project_name):
+    current_time = datetime.now()
+    duration_seconds = (current_time - start_time).total_seconds()
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    status = get_status(level)
+
+    log_entry = {
+        'date': timestamp,
+        'project_name': project_name,
+        'status': status,
+        'duration': f"{duration_seconds:.4f}",  # Formater la durée avec 4 décimales
+        'load_file': date_time
+    }
+    message = message.replace(',', '')
+    if len(message) > 42:
+        message = message[:42]
+    # Log message avec des informations supplémentaires
+    logger.log(level=getattr(logging, level.upper()), msg=message, extra=log_entry)
+
+# Fonction pour extraire le project_name à partir du chemin du fichier de log
+def extract_project_name(log_file_path):
+    # Extrait le nom du répertoire parent juste après 'TM/'
+    path_parts = log_file_path.split('/')
+    tm_index = path_parts.index('TM') + 1
+    
+    # Le nom du projet se situe après le sous-dossier dans 'TM/<directory>/<sub_directory>/logs/<log_file>'
+    project_name = path_parts[tm_index + 1]
+    return project_name
+
+def reset_csv_file(file_path):
+    # Lire le fichier CSV pour obtenir les colonnes
+    df = pd.read_csv(file_path)
+    
+    # Créer un DataFrame vide avec les mêmes colonnes
+    df_vide = pd.DataFrame(columns=df.columns)
+    
+    # Écrire le DataFrame vide dans le fichier CSV, écrasant le contenu existant
+    df_vide.to_csv(file_path, index=False)
+    
+def process_logs(file_path):
+    # Lire le fichier CSV
+    df = pd.read_csv(file_path)
+    
+    # Convertir les colonnes appropriées en types de données corrects
+    df['duration'] = df['duration'].astype(float)
+    df['date'] = pd.to_datetime(df['date'])
+    df['load_file'] = pd.to_datetime(df['load_file'])
+    
+    # Extraire la date seulement
+    df['date_only'] = df['date'].dt.date
+    
+    # Trier par 'project_name', 'date_only', et 'date'
+    df = df.sort_values(by=['project_name', 'date_only', 'date']).reset_index(drop=True)
+    
+    # Calculer la différence en secondes entre les lignes dans chaque groupe
+    df['duration'] = df.groupby(['project_name', 'date_only'])['date'].diff().dt.total_seconds()
+    
+    # Formater la colonne 'duration' pour avoir 4 chiffres après la virgule
+    df['duration'] = df['duration'].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else 0)
+    
+    # Supprimer la colonne 'date_only'
+    df = df.drop(columns='date_only')
+    
+    return df
+
+def process_log_files(log_directory, logger, start_time):
+    log_directory = '/home/support-info/TM/'
+    all_items = os.listdir(log_directory)
+    directories = [item for item in all_items if os.path.isdir(os.path.join(log_directory, item))]
+
+    log_file_paths = []
+
+    # Explorer chaque sous-dossier dans chaque dossier pour trouver les fichiers de log
+    for directory in directories:
+        sub_directory_path = os.path.join(log_directory, directory)
+        sub_directories = [item for item in os.listdir(sub_directory_path) if os.path.isdir(os.path.join(sub_directory_path, item))]
+        
+        for sub_directory in sub_directories:
+            logs_directory = os.path.join(sub_directory_path, sub_directory, 'logs')
+            
+            # Vérifier si le sous-dossier 'logs' existe
+            if os.path.isdir(logs_directory):
+                log_files = [file for file in os.listdir(logs_directory) if file.endswith('.log')]
+                
+                # Ajouter les chemins complets des fichiers de log à la liste
+                for log_file in log_files:
+                    full_log_file_path = os.path.join(logs_directory, log_file)
+                    log_file_paths.append(full_log_file_path)
+
+    # Définir un motif regex pour extraire le timestamp, le niveau et le message
+    log_pattern = re.compile(r"(\d{4}[-/]\d{2}[-/]\d{2} \d{2}:\d{2}:\d{2})\s*[-,]?\s*(INFO|ERROR|WARNING)\s*[-,]?\s*(.*)", re.DOTALL)
+
+
+    # Traiter chaque fichier de log
+    for log_file_path in log_file_paths:
+        project_name = extract_project_name(log_file_path)
+        
+        with open(log_file_path, 'r') as log_file:
+            for line in log_file:
+                try:
+                    # Appliquer le motif regex à la ligne
+                    match = re.search(log_pattern, line.strip())
+                    if match:
+                        timestamp, level, message = match.groups()
+                        if level in ['INFO', 'ERROR', 'WARNING']:
+                            log_message(logger, timestamp, message, level, start_time, project_name)
+                    
+                except Exception as e:
+                    print(f"Error processing line in {log_file_path}: {line}\n{e}")
