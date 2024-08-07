@@ -4,9 +4,8 @@ from visualizations.pages import *
 from pyhocon import ConfigFactory
 from src.utils import config_file
 import warnings
+st.set_page_config(page_title='Logging System WEB APP', page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy connectable')
-
-
 
 
 def main():
@@ -58,5 +57,4 @@ def authenticate():
         main()
 
 if __name__ == '__main__':
-    st.set_page_config(page_title='Logging System WEB APP', page_icon="📊", layout="wide", initial_sidebar_state="expanded")
     main()

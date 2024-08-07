@@ -25,7 +25,6 @@ schema_table = config.db_dwh.schema_table
 sql_data = config.sql_path.sql_data
 
 
-st.set_page_config(page_title='Sales WEB APP', page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 # Grab data from our table
 @st.cache_data
 def getting_data() -> pd.DataFrame:
@@ -43,6 +42,7 @@ def load_lottie_url(url: str):
 
 
 def show_home():
+    
     # Header
     st.title("📊 Logging System Dashboard")
 
