@@ -1,7 +1,7 @@
 #!/bin/bash
 # Change to the target directory
 # Define the target directory
-TARGET_DIR="/home/support-info/TM/01-PCC/06-monitoring_global"
+TARGET_DIR="C:\Users\dndiay01\Documents\TOOLS\GITHUB\01-monitoring_global"
 
 cd "$TARGET_DIR" || { echo "Failed to change directory to $TARGET_DIR" >> "$TARGET_DIR/logs/cronjob.log" 2>&1; exit 1; }
 
