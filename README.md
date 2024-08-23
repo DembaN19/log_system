@@ -21,4 +21,5 @@ Visualisation :
 le TDB est développé sur steamlit appelé par Cognos en fonction embdeed.
 
 
-![image](https://github.com/user-attachments/assets/dbfee9c8-3e5a-4f41-9439-9c32ba860575)
+![image](https://github.com/user-attachments/assets/2df9435d-05a3-4d8d-b412-fc04edc98f45)
+
