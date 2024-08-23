@@ -14,7 +14,7 @@ from visualizations.charts import *
 import pandas as pd
 from streamlit_lottie import st_lottie
 import requests
-from src.utils import generate_csv_report, generate_pdf_report
+from src.utils import generate_csv_report, generate_pdf_report, clear_cache
 
 config = ConfigFactory.parse_file(config_file)
 server = config.db_dwh.server
@@ -32,7 +32,9 @@ def getting_data() -> pd.DataFrame:
     
     return df_base
 
-df_base = getting_data()
+
+
+
 
 def load_lottie_url(url: str):
     r = requests.get(url)
@@ -96,6 +98,10 @@ def show_home():
     """)
 
 def show_analytics():
+    df_base = getting_data()
+    if st.button("Clear Cache"):
+        clear_cache()
+        st.success("Cache cleared!")
     st.title("Logging System Dashboard")
     st.write("Welcome to the Logging System Dashboard. Here, you can find insights into the logging system's performance across different entities.")
     df_base['date'] = pd.to_datetime(df_base['date'])
@@ -152,6 +158,7 @@ def show_reports():
     st.write("Generate and download detailed project reports.")
 
     st.header("Data Overview")
+    df_base = getting_data()
     with st.expander("Data Overview"):
         st.dataframe(df_base)
 

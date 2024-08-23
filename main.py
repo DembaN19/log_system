@@ -30,6 +30,9 @@ def main():
     df = process_logs(f'{current_dir}/logs.csv')
     insert_data_into_db(df, f'{schema_table}.{table_name}', server, database, username, password)
     
+    
+    
+    
     end_timestamp = datetime.now()
     logger.info(f'Traitement finished timestamp: {end_timestamp}')
     traitement_duration = diff_time(start_time , end_timestamp)

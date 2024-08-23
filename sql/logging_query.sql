@@ -1,3 +1,3 @@
 select *
 
-from DW_NOVUS.usp.loghistory
+from database_name.schema_name.table_name

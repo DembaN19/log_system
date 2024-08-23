@@ -38,7 +38,8 @@ def main():
         go_to()
     else:
         st.error(f"Page '{page}' not found in the configuration.")
-        
+    
+    
 def authenticate():
     config = ConfigFactory.parse_file(config_file)
     # Initialize session state
