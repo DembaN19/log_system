@@ -8,7 +8,6 @@ date;levelname;message;project_name;status;duration;load_file
 25/07/2024 11:49;ERROR;No valid parquet files found in the direct;Project_A;failed;0.0432;21/08/2024 00:00
 25/07/2024 11:49;INFO;Traitement finished timestamp: 2024-07-25 ;Project_A;success;0.0433;21/08/2024 00:00
 25/07/2024 11:50;INFO;Duration job: 0h:0m:29s;Project_A;success;0.0434;21/08/2024 00:00
-25/07/2024 11:50;INFO;03-control_paragon_arcompletedDuration job;Project_A;success;0.0435;21/08/2024 00:00
 25/07/2024 17:46;INFO;Start timestamp: 2024-07-25 17:46:40.18571;Project_A;success;0.0443;21/08/2024 00:00
 25/07/2024 17:46;INFO;Conversion has been started!;Project_A;success;0.0445;21/08/2024 00:00
 25/07/2024 17:46;INFO;Conversion process completed.;Project_A;success;0.0446;21/08/2024 00:00
@@ -18,10 +17,8 @@ date;levelname;message;project_name;status;duration;load_file
 05/08/2024 13:15;INFO;Query <_io.TextIOWrapper name='sql/cfbs_pb;Project_B;success;0.4694;21/08/2024 00:00
 05/08/2024 13:15;INFO;read_sql_file() took 0.002 seconds to ex;Project_B;success;0.4694;21/08/2024 00:00
 05/08/2024 13:15;ERROR;running_queries() took 9.297 seconds to ;Project_B;error;0.4695;21/08/2024 00:00
-05/08/2024 13:15;INFO;The query sql/cfbs_pbps_pe.sql has been re;Project_B;success;0.4695;21/08/2024 00:00
 05/08/2024 13:15;INFO;Running (1): build_sql_pymssql();Project_B;success;0.4695;21/08/2024 00:00
 05/08/2024 13:15;INFO;Successfully connected to the database.;Project_B;success;0.4696;21/08/2024 00:00
-05/08/2024 13:15;INFO;Query <_io.TextIOWrapper name='sql/ptsa.sq;Project_B;success;0.4696;21/08/2024 00:00
 05/08/2024 13:15;INFO;read_sql_file() took 0.001 seconds to ex;Project_B;success;0.4697;21/08/2024 00:00
 12/08/2024 16:28;INFO;Start timestamp: 2024-08-12 16:28:12.18076;Project_C;success;0.6809;21/08/2024 00:00
 12/08/2024 16:28;INFO;Successfully connected to the database.;Project_C;success;0.6810;21/08/2024 00:00

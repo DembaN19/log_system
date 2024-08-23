@@ -646,7 +646,7 @@ def process_logs(file_path):
     return df
 
 def process_log_files(log_directory, logger, start_time):
-    log_directory = '/home/support-info/TM/'
+    log_directory = 'path_of_all_project_dir'
     all_items = os.listdir(log_directory)
     directories = [item for item in all_items if os.path.isdir(os.path.join(log_directory, item))]
 
