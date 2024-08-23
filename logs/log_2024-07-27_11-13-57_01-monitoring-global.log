@@ -1,0 +1,3 @@
+2024-07-27 11:14:00 - INFO - Successfully connected to the database.
+2024-07-27 11:14:00 - INFO - Query <_io.TextIOWrapper name='sql/logging_query.sql' mode='r' encoding='UTF-8'> has been opened successfully!
+2024-07-27 11:14:00 - INFO - "read_sql_file()" took 0.008 seconds to execute
