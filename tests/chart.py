@@ -1,5 +1,5 @@
 import pandas as pd
-
+import plotly as px
 # Création de DataFrame
 df_base = pd.DataFrame({
     "date": ['2021-01-01', '2021-01-02', '2021-01-03'],

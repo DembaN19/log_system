@@ -1,7 +1,0 @@
-date,levelname,message,project_name,status,duration
-2024/07/26 09:22:35,INFO,Start timestamp: 2024-07-25 11:49:26.376470,09-monitoring-global,success,0.1444s
-2024/07/26 09:22:35,INFO,Conversion has been started!,09-monitoring-global,success,0.1461s
-2024/07/26 09:22:35,INFO,Conversion process completed.,09-monitoring-global,success,0.1465s
-2024/07/26 09:22:35,ERROR,No valid parquet files found in the directory.,09-monitoring-global,failed,0.1468s
-2024/07/26 09:22:35,INFO,Traitement finished timestamp: 2024-07-25 11:49:52.188788,09-monitoring-global,success,0.1472s
-2024/07/26 09:22:35,INFO,Duration job: 0h:0m:29s,09-monitoring-global,success,0.1475s

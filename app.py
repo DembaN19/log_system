@@ -14,14 +14,14 @@ def main():
     pages = config.streamlit.pages
     styles = config.streamlit.styles
     options = config.streamlit.options
-    paragon_url = config.streamlit.urls
-    logo_paragon = config.streamlit.logo_paragon
+    linkedin_url = config.streamlit.urls
+    logo_logging_system = config.streamlit.logo_logging
     
    
     page = st_navbar(
         pages,
-        logo_path=logo_paragon,
-        urls=paragon_url,
+        logo_path=logo_logging_system,
+        urls=linkedin_url,
         styles=styles,
         options=options,
     ).lower() 
